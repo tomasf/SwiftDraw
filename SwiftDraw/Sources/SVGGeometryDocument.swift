@@ -1,7 +1,7 @@
 public import Foundation
 import SwiftDrawDOM
 
-public struct SVGDocument: Sendable, Hashable {
+public struct SVGGeometryDocument: Sendable, Hashable {
     public struct Size: Sendable, Hashable {
         public var width: Double
         public var height: Double
@@ -115,7 +115,7 @@ public struct SVGDocument: Sendable, Hashable {
     }
 }
 
-private extension SVGDocument {
+private extension SVGGeometryDocument {
     static func makeShapes(from layer: LayerTree.Layer) -> [Shape] {
         collectShapes(from: layer, transform: .identity)
     }
@@ -153,13 +153,13 @@ private extension SVGDocument {
     }
 }
 
-private extension SVGDocument.Point {
+private extension SVGGeometryDocument.Point {
     init(_ point: LayerTree.Point) {
         self.init(x: Double(point.x), y: Double(point.y))
     }
 }
 
-private extension SVGDocument.Path {
+private extension SVGGeometryDocument.Path {
     init(_ path: LayerTree.Path) {
         segments = path.segments.map { segment in
             switch segment {
@@ -176,7 +176,7 @@ private extension SVGDocument.Path {
     }
 }
 
-private extension SVGDocument.FillRule {
+private extension SVGGeometryDocument.FillRule {
     init(layerRule: LayerTree.FillRule) {
         switch layerRule {
         case .nonzero:
@@ -187,19 +187,19 @@ private extension SVGDocument.FillRule {
     }
 }
 
-private extension SVGDocument.Stroke {
+private extension SVGGeometryDocument.Stroke {
     init?(_ attributes: LayerTree.StrokeAttributes) {
         guard attributes.width > 0, attributes.color.isVisible else { return nil }
         self.init(
             width: Double(attributes.width),
-            lineCap: SVGDocument.LineCap(layerCap: attributes.cap),
-            lineJoin: SVGDocument.LineJoin(layerJoin: attributes.join),
+            lineCap: SVGGeometryDocument.LineCap(layerCap: attributes.cap),
+            lineJoin: SVGGeometryDocument.LineJoin(layerJoin: attributes.join),
             miterLimit: Double(attributes.miterLimit)
         )
     }
 }
 
-private extension SVGDocument.LineJoin {
+private extension SVGGeometryDocument.LineJoin {
     init(layerJoin: LayerTree.LineJoin) {
         switch layerJoin {
         case .miter:
@@ -212,7 +212,7 @@ private extension SVGDocument.LineJoin {
     }
 }
 
-private extension SVGDocument.LineCap {
+private extension SVGGeometryDocument.LineCap {
     init(layerCap: LayerTree.LineCap) {
         switch layerCap {
         case .butt:
