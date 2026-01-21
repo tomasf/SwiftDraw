@@ -217,3 +217,29 @@ public struct SVGTransformMatrix: Sendable, Hashable {
 
     public static let identity = SVGTransformMatrix(a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0)
 }
+
+// MARK: - Text
+
+public struct SVGTextInfo: Sendable, Hashable {
+    public let content: String
+    public let position: SVGPoint
+    public let fontName: String
+    public let fontSize: Double
+    public let anchor: SVGTextAnchor
+    public let color: SVGColor
+
+    public init(content: String, position: SVGPoint, fontName: String, fontSize: Double, anchor: SVGTextAnchor, color: SVGColor) {
+        self.content = content
+        self.position = position
+        self.fontName = fontName
+        self.fontSize = fontSize
+        self.anchor = anchor
+        self.color = color
+    }
+}
+
+public enum SVGTextAnchor: Sendable, Hashable {
+    case start   // left-aligned
+    case middle  // center-aligned
+    case end     // right-aligned
+}

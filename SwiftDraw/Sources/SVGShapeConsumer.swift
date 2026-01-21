@@ -36,7 +36,16 @@ public protocol SVGShapeConsumer {
     func makePoint(x: Double, y: Double) -> Point
     func makePathBuilder() -> any SVGPathBuilder<Point, Path>
     func makeShape(path: Path, fill: SVGFillInfo?, stroke: SVGStrokeInfo?) -> Shape?
+
+    /// Creates a shape from text. Return nil to skip text rendering.
+    func makeText(info: SVGTextInfo) -> Shape?
+
     func finalizeDocument(shapes: [Shape], size: (width: Double, height: Double)) -> Shape
+}
+
+public extension SVGShapeConsumer {
+    /// Default implementation that skips text rendering.
+    func makeText(info: SVGTextInfo) -> Shape? { nil }
 }
 
 /// Protocol for building paths from SVG path commands.

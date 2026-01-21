@@ -88,7 +88,13 @@ private struct SVGShapeExtractor<C: SVGShapeConsumer> {
             case .layer(let nested):
                 output.append(contentsOf: extractShapes(from: nested, transform: combinedTransform))
 
-            default:
+            case let .text(string, point, attributes):
+                let textInfo = makeTextInfo(string: string, point: point, attributes: attributes, transform: combinedTransform)
+                if let shape = consumer.makeText(info: textInfo) {
+                    output.append(shape)
+                }
+
+            case .image:
                 continue
             }
         }
@@ -269,6 +275,38 @@ private struct SVGShapeExtractor<C: SVGShapeConsumer> {
             tx: Double(matrix.tx),
             ty: Double(matrix.ty)
         )
+    }
+
+    // MARK: - Text Conversion
+
+    private func makeTextInfo(
+        string: String,
+        point: LayerTree.Point,
+        attributes: LayerTree.TextAttributes,
+        transform: LayerTree.Transform.Matrix
+    ) -> SVGTextInfo {
+        // Apply transform to the text position
+        let transformedPoint = transform.transform(point: point)
+
+        return SVGTextInfo(
+            content: string,
+            position: SVGPoint(x: Double(transformedPoint.x), y: Double(transformedPoint.y)),
+            fontName: attributes.fontName,
+            fontSize: Double(attributes.size),
+            anchor: makeTextAnchor(from: attributes.anchor),
+            color: makeColor(from: attributes.color)
+        )
+    }
+
+    private func makeTextAnchor(from anchor: DOM.TextAnchor) -> SVGTextAnchor {
+        switch anchor {
+        case .start:
+            return .start
+        case .middle:
+            return .middle
+        case .end:
+            return .end
+        }
     }
 
     // MARK: - Enum Conversions
