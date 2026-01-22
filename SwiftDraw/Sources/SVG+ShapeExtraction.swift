@@ -137,13 +137,13 @@ private struct SVGShapeExtractor<C: SVGShapeConsumer> {
     }
 
     private func makeFillInfo(from fill: LayerTree.FillAttributes) -> SVGFillInfo? {
-        let paint = makeFillPaint(from: fill.fill)
+        let hasFill = hasFillPaint(fill.fill)
 
         // No fill if paint is none or opacity is zero
-        guard paint != .none, fill.opacity > 0 else { return nil }
+        guard hasFill, fill.opacity > 0 else { return nil }
 
         return SVGFillInfo(
-            paint: paint,
+            hasFill: true,
             opacity: Double(fill.opacity),
             rule: makeFillRule(from: fill.rule)
         )
@@ -152,11 +152,11 @@ private struct SVGShapeExtractor<C: SVGShapeConsumer> {
     private func makeStrokeInfo(from stroke: LayerTree.StrokeAttributes) -> SVGStrokeInfo? {
         guard stroke.width > 0 else { return nil }
 
-        let paint = makeStrokePaint(from: stroke.color)
-        guard paint != .none else { return nil }
+        let hasStroke = hasStrokePaint(stroke.color)
+        guard hasStroke else { return nil }
 
         return SVGStrokeInfo(
-            paint: paint,
+            hasStroke: true,
             width: Double(stroke.width),
             lineCap: makeLineCap(from: stroke.cap),
             lineJoin: makeLineJoin(from: stroke.join),
@@ -164,117 +164,31 @@ private struct SVGShapeExtractor<C: SVGShapeConsumer> {
         )
     }
 
-    // MARK: - Paint Conversions
+    // MARK: - Paint Detection
 
-    private func makeFillPaint(from fill: LayerTree.FillAttributes.Fill) -> SVGFillPaint {
+    private func hasFillPaint(_ fill: LayerTree.FillAttributes.Fill) -> Bool {
         switch fill {
         case .color(let color):
-            let svgColor = makeColor(from: color)
-            return svgColor == .none ? .none : .color(svgColor)
-
-        case .linearGradient(let gradient):
-            return .linearGradient(makeLinearGradient(from: gradient))
-
-        case .radialGradient(let gradient):
-            return .radialGradient(makeRadialGradient(from: gradient))
-
-        case .pattern(let pattern):
-            return .pattern(makePattern(from: pattern))
+            return !isNoneColor(color)
+        case .linearGradient, .radialGradient, .pattern:
+            return true
         }
     }
 
-    private func makeStrokePaint(from stroke: LayerTree.StrokeAttributes.Stroke) -> SVGStrokePaint {
+    private func hasStrokePaint(_ stroke: LayerTree.StrokeAttributes.Stroke) -> Bool {
         switch stroke {
         case .color(let color):
-            let svgColor = makeColor(from: color)
-            return svgColor == .none ? .none : .color(svgColor)
-
-        case .linearGradient(let gradient):
-            return .linearGradient(makeLinearGradient(from: gradient))
-
-        case .radialGradient(let gradient):
-            return .radialGradient(makeRadialGradient(from: gradient))
+            return !isNoneColor(color)
+        case .linearGradient, .radialGradient:
+            return true
         }
     }
 
-    // MARK: - Color Conversion
-
-    private func makeColor(from color: LayerTree.Color) -> SVGColor {
-        switch color {
-        case .none:
-            return .none
-        case let .rgba(r, g, b, a, space):
-            let colorSpace: SVGColorSpace = (space == .p3) ? .p3 : .sRGB
-            return .rgba(r: Double(r), g: Double(g), b: Double(b), a: Double(a), space: colorSpace)
-        case let .gray(white, a):
-            return .gray(white: Double(white), a: Double(a))
+    private func isNoneColor(_ color: LayerTree.Color) -> Bool {
+        if case .none = color {
+            return true
         }
-    }
-
-    // MARK: - Gradient Conversion
-
-    private func makeLinearGradient(from gradient: LayerTree.LinearGradient) -> SVGLinearGradient {
-        SVGLinearGradient(
-            stops: gradient.gradient.stops.map(makeGradientStop),
-            start: SVGPoint(x: Double(gradient.start.x), y: Double(gradient.start.y)),
-            end: SVGPoint(x: Double(gradient.end.x), y: Double(gradient.end.y)),
-            units: makeGradientUnits(from: gradient.units),
-            transform: makeTransformMatrix(from: gradient.transform)
-        )
-    }
-
-    private func makeRadialGradient(from gradient: LayerTree.RadialGradient) -> SVGRadialGradient {
-        SVGRadialGradient(
-            stops: gradient.gradient.stops.map(makeGradientStop),
-            center: SVGPoint(x: Double(gradient.center.x), y: Double(gradient.center.y)),
-            radius: Double(gradient.radius),
-            focalCenter: SVGPoint(x: Double(gradient.endCenter.x), y: Double(gradient.endCenter.y)),
-            focalRadius: Double(gradient.endRadius),
-            units: makeGradientUnits(from: gradient.units),
-            transform: makeTransformMatrix(from: gradient.transform)
-        )
-    }
-
-    private func makeGradientStop(from stop: LayerTree.Gradient.Stop) -> SVGGradientStop {
-        SVGGradientStop(
-            offset: Double(stop.offset),
-            color: makeColor(from: stop.color),
-            opacity: Double(stop.opacity)
-        )
-    }
-
-    private func makeGradientUnits(from units: LayerTree.Gradient.Units) -> SVGGradientUnits {
-        switch units {
-        case .userSpaceOnUse:
-            return .userSpaceOnUse
-        case .objectBoundingBox:
-            return .objectBoundingBox
-        }
-    }
-
-    // MARK: - Pattern Conversion
-
-    private func makePattern(from pattern: LayerTree.Pattern) -> SVGPattern {
-        SVGPattern(frame: SVGRect(
-            x: Double(pattern.frame.x),
-            y: Double(pattern.frame.y),
-            width: Double(pattern.frame.width),
-            height: Double(pattern.frame.height)
-        ))
-    }
-
-    // MARK: - Transform Conversion
-
-    private func makeTransformMatrix(from transforms: [LayerTree.Transform]) -> SVGTransformMatrix {
-        let matrix = transforms.toMatrix()
-        return SVGTransformMatrix(
-            a: Double(matrix.a),
-            b: Double(matrix.b),
-            c: Double(matrix.c),
-            d: Double(matrix.d),
-            tx: Double(matrix.tx),
-            ty: Double(matrix.ty)
-        )
+        return false
     }
 
     // MARK: - Text Conversion
@@ -293,8 +207,7 @@ private struct SVGShapeExtractor<C: SVGShapeConsumer> {
             position: SVGPoint(x: Double(transformedPoint.x), y: Double(transformedPoint.y)),
             fontName: attributes.fontName,
             fontSize: Double(attributes.size),
-            anchor: makeTextAnchor(from: attributes.anchor),
-            color: makeColor(from: attributes.color)
+            anchor: makeTextAnchor(from: attributes.anchor)
         )
     }
 
